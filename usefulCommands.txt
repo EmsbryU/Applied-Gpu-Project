@@ -1,11 +1,17 @@
 Visual profiling
 nvvp -vm /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java [filename + args] 
 
-Compile, run and compare outputs of old and improved gaussian on different matrix sizes 16,1024,4096 supported
-./compileAndCompare.sh [size]
-
 Set compiler path if you need for some reason
 export PATH=/usr/local/cuda/bin:$PATH
 
 Check for memory leaks
 compute-sanitizer --tool memcheck --leak-check full [filename + args]
+
+Compile, run and compare outputs of old and improved gaussian on different matrix sizes 16,1024,4096 supported
+./compileAndCompare.sh [size]
+
+Run program some number of times for some matrix and get average times
+./benchmark.sh [matrix_size] [number_of_runs] [program]
+    Matrix size can be 16, 1024, or 4096.
+    Number of runs can be 10, 25, or 50.
+    Program will default to impGaussian/gaussian

@@ -290,7 +290,6 @@ __global__ void Fan1(float *m_cuda, float *a_cuda, int Size, int t)
 {   
 	//if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) printf(".");
 	//printf("blockIDx.x:%d,threadIdx.x:%d,Size:%d,t:%d,Size-1-t:%d\n",blockIdx.x,threadIdx.x,Size,t,Size-1-t);
-
 	if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) return;
 	*(m_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) = *(a_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) / *(a_cuda+Size*t+t);
 }
@@ -394,24 +393,30 @@ void BackSub()
 	finalVec = (float *) malloc(Size * sizeof(float));
 	// solve "bottom up"
 	int i,j;
-	for(i=0;i<Size;i++){
-		finalVec[Size-i-1]=b[Size-i-1];
-		for(j=0;j<i;j++)
-		{
-			//printf("%d, %d\n", Size-i-1, Size-j-1);
-			finalVec[Size-i-1]-=*(a+Size*(Size-i-1)+(Size-j-1)) * finalVec[Size-j-1];
-		}
-		finalVec[Size-i-1]=finalVec[Size-i-1]/ *(a+Size*(Size-i-1)+(Size-i-1));
-	}
-
-	//TODO: Potential GPU STUFF????
-	// for(i = Size - 1; i >= 0; i--) {
-	// 	finalVec[i]=b[i];
-	// 	for(j = Size -1; j > i; j--) {
-	// 		finalVec[i] -= *(a+Size*(i)+(j)) * finalVec[j];
+	// for(i=0;i<Size;i++){
+	// 	finalVec[Size-i-1]=b[Size-i-1];
+	// 	for(j=0;j<i;j++)
+	// 	{
+	// 		//printf("%d, %d\n", Size-i-1, Size-j-1);
+	// 		finalVec[Size-i-1]-=*(a+Size*(Size-i-1)+(Size-j-1)) * finalVec[Size-j-1];
 	// 	}
-	// 	finalVec[i]= finalVec[i] / *(a+Size*(i)+(i));
+	// 	finalVec[Size-i-1]=finalVec[Size-i-1]/ *(a+Size*(Size-i-1)+(Size-i-1));
 	// }
+	// struct timeval time_start;
+	// gettimeofday(&time_start, NULL);
+	//TODO: Potential GPU STUFF????
+	for(i = Size - 1; i >= 0; i--) {
+		finalVec[i]=b[i];
+		for(j = Size -1; j > i; j--) {
+			finalVec[i] -= *(a+Size*(i)+(j)) * finalVec[j];
+		}
+		finalVec[i]= finalVec[i] / *(a+Size*(i)+(i));
+	}
+	//THIS WAS VERY FAST NOT WORTH OPTIMISING
+	// struct timeval time_end;
+    // gettimeofday(&time_end, NULL);
+	// unsigned int time_total = (time_end.tv_sec * 1000000 + time_end.tv_usec) - (time_start.tv_sec * 1000000 + time_start.tv_usec);
+	// printf("\nTest time\t%f sec\n", time_total * 1e-6);
 }
 
 void InitMat(float *ary, int nrow, int ncol)

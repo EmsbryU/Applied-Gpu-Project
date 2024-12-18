@@ -1,0 +1,2 @@
+Modifications done:
+Removed deprecated and unnecessary cudaThreadSynchronise()
