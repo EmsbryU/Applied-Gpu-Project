@@ -363,12 +363,13 @@ void ForwardSub()
     gettimeofday(&time_start, NULL);
 	for (t=0; t<(Size-1); t++) {
 		Fan1<<<dimGrid,dimBlock>>>(m_cuda,a_cuda,Size,t);
-		cudaThreadSynchronize();
+		//cudaDeviceSynchronize();
 		Fan2<<<dimGridXY,dimBlockXY>>>(m_cuda,a_cuda,b_cuda,Size,Size-t,t);
-		cudaThreadSynchronize();
+		//cudaDeviceSynchronize();
 		checkCUDAError("Fan2");
 	}
 	// end timing kernels
+	cudaDeviceSynchronize();
 	struct timeval time_end;
     gettimeofday(&time_end, NULL);
     totalKernelTime = (time_end.tv_sec * 1000000 + time_end.tv_usec) - (time_start.tv_sec * 1000000 + time_start.tv_usec);
@@ -393,24 +394,24 @@ void BackSub()
 	finalVec = (float *) malloc(Size * sizeof(float));
 	// solve "bottom up"
 	int i,j;
-	// for(i=0;i<Size;i++){
-	// 	finalVec[Size-i-1]=b[Size-i-1];
-	// 	for(j=0;j<i;j++)
-	// 	{
-	// 		printf("%d, %d\n", Size-i-1, Size-j-1);
-	// 		finalVec[Size-i-1]-=*(a+Size*(Size-i-1)+(Size-j-1)) * finalVec[Size-j-1];
-	// 	}
-	// 	finalVec[Size-i-1]=finalVec[Size-i-1]/ *(a+Size*(Size-i-1)+(Size-i-1));
-	// }
+	for(i=0;i<Size;i++){
+		finalVec[Size-i-1]=b[Size-i-1];
+		for(j=0;j<i;j++)
+		{
+			//printf("%d, %d\n", Size-i-1, Size-j-1);
+			finalVec[Size-i-1]-=*(a+Size*(Size-i-1)+(Size-j-1)) * finalVec[Size-j-1];
+		}
+		finalVec[Size-i-1]=finalVec[Size-i-1]/ *(a+Size*(Size-i-1)+(Size-i-1));
+	}
 
 	//TODO: Potential GPU STUFF????
-	for(i = Size - 1; i >= 0; i--) {
-		finalVec[i]=b[i];
-		for(j = Size -1; j > i; j--) {
-			finalVec[i] -= *(a+Size*(i)+(j)) * finalVec[j];
-		}
-		finalVec[i]= finalVec[i] / *(a+Size*(i)+(i));
-	}
+	// for(i = Size - 1; i >= 0; i--) {
+	// 	finalVec[i]=b[i];
+	// 	for(j = Size -1; j > i; j--) {
+	// 		finalVec[i] -= *(a+Size*(i)+(j)) * finalVec[j];
+	// 	}
+	// 	finalVec[i]= finalVec[i] / *(a+Size*(i)+(i));
+	// }
 }
 
 void InitMat(float *ary, int nrow, int ncol)

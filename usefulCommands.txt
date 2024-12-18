@@ -1,0 +1,11 @@
+Visual profiling
+nvvp -vm /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java [filename + args] 
+
+Compile, run and compare outputs of old and improved gaussian on different matrix sizes 16,1024,4096 supported
+./compileAndCompare.sh [size]
+
+Set compiler path if you need for some reason
+export PATH=/usr/local/cuda/bin:$PATH
+
+Check for memory leaks
+compute-sanitizer --tool memcheck --leak-check full [filename + args]
