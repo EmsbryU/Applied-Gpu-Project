@@ -304,7 +304,8 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
 	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
 	if (gthid >= Size - 1 - t)
 		return;
-	m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	
+	m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];;
 
 	b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
 }
@@ -336,6 +337,7 @@ __global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t) {
 	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size) return;
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+	//printf("row: %d, y: %d\n", row, threadIdx.y);
 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
 }
 
@@ -373,6 +375,7 @@ void ForwardSub()
 	dim3 dimBlockFan2(numThreads);
 	dim3 dimGridFan2((Size / numThreads) + (!(Size % numThreads ? 0 : 1)), Size - 1);
 
+
 	// int blockSize2d, gridSize2d;
 	// blockSize2d = BLOCK_SIZE_XY;
 	// gridSize2d = (Size/blockSize2d) + (!(Size%blockSize2d?0:1)); 
@@ -389,10 +392,14 @@ void ForwardSub()
 		dimGrid.x = (((Size-t) / block_size) + (!((Size-t) % block_size) ? 0 : 1));
 		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda ,Size, t);
 
+
+		dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
 		dimGridFan2.y = (Size - 1 - t);
 		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
 		//Fan2New<<<dimGridXY, dimBlockXY>>>(m_cuda, a_cuda, Size, t);
 		checkCUDAError("Fan2");
+		// cudaDeviceSynchronize();
+		// exit(1);
 	}
 	// end timing kernels
 	cudaDeviceSynchronize();

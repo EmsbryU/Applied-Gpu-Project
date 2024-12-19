@@ -1,0 +1,2 @@
+Average Total Time (including memory transfers): 1.369988 sec
+Average Time for CUDA Kernels: 0.994336 sec
