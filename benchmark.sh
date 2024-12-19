@@ -56,7 +56,7 @@ echo "Running the program $NUM_RUNS times with $PROGRAM..."
 for i in $(seq 1 $NUM_RUNS); do
     echo "Run $i..."
     $PROGRAM -f $DATA_FILE -q > $OUTPUT_FILE
-    
+
     if [ ! -f "$OUTPUT_FILE" ]; then
         echo "Error: Output file $OUTPUT_FILE not found."
         exit 1
@@ -70,14 +70,14 @@ for i in $(seq 1 $NUM_RUNS); do
         exit 1
     fi
 
-    TOTAL_TIME_TOTAL=$(echo "$TOTAL_TIME_TOTAL + $TIME_TOTAL" | bc)
-    TOTAL_TIME_KERNELS=$(echo "$TOTAL_TIME_KERNELS + $TIME_KERNELS" | bc)
+    TOTAL_TIME_TOTAL=$(awk "BEGIN {print $TOTAL_TIME_TOTAL + $TIME_TOTAL}")
+    TOTAL_TIME_KERNELS=$(awk "BEGIN {print $TOTAL_TIME_KERNELS + $TIME_KERNELS}")
 done
 
 rm -f "tmp.txt"
 
-AVG_TIME_TOTAL=$(echo "scale=6; $TOTAL_TIME_TOTAL / $NUM_RUNS" | bc)
-AVG_TIME_KERNELS=$(echo "scale=6; $TOTAL_TIME_KERNELS / $NUM_RUNS" | bc)
+AVG_TIME_TOTAL=$(awk "BEGIN {printf \"%.6f\", $TOTAL_TIME_TOTAL / $NUM_RUNS}")
+AVG_TIME_KERNELS=$(awk "BEGIN {printf \"%.6f\", $TOTAL_TIME_KERNELS / $NUM_RUNS}")
 
 PARSED_FILE="benchmarks/$(dirname $PROGRAM)_avg_${MATRIX_SIZE}_${NUM_RUNS}.txt"
 cat <<EOF > "$PARSED_FILE"

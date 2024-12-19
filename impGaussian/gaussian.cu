@@ -26,7 +26,7 @@
 #elif defined(RD_WG_SIZE)
 #define MAXBLOCKSIZE RD_WG_SIZE
 #else
-#define MAXBLOCKSIZE 64
+#define MAXBLOCKSIZE 128
 #endif
 
 // 2D defines. Go from specific to general
@@ -291,55 +291,51 @@ void InitPerRun()
  ** of t which is defined on the ForwardSub().
  **-------------------------------------------------------
  */
-__global__ void Fan1(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
+__global__ void Fan1(float *m_cuda, float *a_cuda, int Size, int t)
+{   
+	//if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) printf(".");
+	//printf("blockIDx.x:%d,threadIdx.x:%d,Size:%d,t:%d,Size-1-t:%d\n",blockIdx.x,threadIdx.x,Size,t,Size-1-t);
+
+	if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) return;
+	*(m_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) = *(a_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) / *(a_cuda+Size*t+t);
+}
+__global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
 {
-	// if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) printf(".");
-	// printf("blockIDx.x:%d,threadIdx.x:%d,Size:%d,t:%d,Size-1-t:%d\n",blockIdx.x,threadIdx.x,Size,t,Size-1-t);
 	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
-	//printf("%d\n", gthid);
 	if (gthid >= Size - 1 - t)
 		return;
-	// printf("%ds\n", Size * (gthid + t + 1) + t);
 	m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
 
 	b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
-
-	// if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) return;
-	// *(m_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) = *(a_cuda+Size*(blockDim.x*blockIdx.x+threadIdx.x+t+1)+t) / *(a_cuda+Size*t+t);
 }
 
 /*-------------------------------------------------------
  ** Fan2() -- Modify the matrix A into LUD
  **-------------------------------------------------------
- */
+ */ 
 
-__global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int j1, int t)
+__global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda,int Size, int j1, int t)
 {
-	if (threadIdx.x + blockIdx.x * blockDim.x >= Size - 1 - t)
-		return;
-	if (threadIdx.y + blockIdx.y * blockDim.y >= Size - t)
-		return;
-
+	if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) return;
+	if(threadIdx.y + blockIdx.y * blockDim.y >= Size-t) return;
+	
 	int xidx = blockIdx.x * blockDim.x + threadIdx.x;
 	int yidx = blockIdx.y * blockDim.y + threadIdx.y;
-	// printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
-
-	a_cuda[Size * (xidx + 1 + t) + (yidx + t)] -= m_cuda[Size * (xidx + 1 + t) + t] * a_cuda[Size * t + (yidx + t)];
-	// a_cuda[xidx+1+t][yidx+t] -= m_cuda[xidx+1+t][t] * a_cuda[t][yidx+t];
-	if (yidx == 0)
-	{
-		// printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
-		// printf("xidx:%d,yidx:%d\n",xidx,yidx);
-		b_cuda[xidx + 1 + t] -= m_cuda[Size * (xidx + 1 + t) + t] * b_cuda[t];
+	//printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
+	
+	a_cuda[Size*(xidx+1+t)+(yidx+t)] -= m_cuda[Size*(xidx+1+t)+t] * a_cuda[Size*t+(yidx+t)];
+	//a_cuda[xidx+1+t][yidx+t] -= m_cuda[xidx+1+t][t] * a_cuda[t][yidx+t];
+	if(yidx == 0){
+		//printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
+		//printf("xidx:%d,yidx:%d\n",xidx,yidx);
+		b_cuda[xidx+1+t] -= m_cuda[Size*(xidx+1+t)+(yidx+t)] * b_cuda[t];
 	}
 }
 
-__global__ void Fan2New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t) {
+__global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t) {
+	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size) return;
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
-	if (row >= Size) return;
-	if (col >= Size) return;
-
 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
 }
 
@@ -369,22 +365,20 @@ void ForwardSub()
 
 	block_size = MAXBLOCKSIZE;
 	grid_size = (Size / block_size) + (!(Size % block_size) ? 0 : 1);
-	// printf("1d grid size: %d\n",grid_size);
 
 	dim3 dimBlock(block_size);
 	dim3 dimGrid(grid_size);
-	// dim3 dimGrid( (N/dimBlock.x) + (!(N%dimBlock.x)?0:1) );
 
-	int blockSize2d, gridSize2d;
-	blockSize2d = BLOCK_SIZE_XY;
-	gridSize2d = (Size / blockSize2d) + (!(Size % blockSize2d ? 0 : 1));
-
-	dim3 dimBlockXY(blockSize2d, blockSize2d);
-	dim3 dimGridXY(gridSize2d, gridSize2d);
-
-	int numThreads = 16;
+	int numThreads = 128;
 	dim3 dimBlockFan2(numThreads);
-	dim3 dimGridFan2((Size / numThreads) + (!(Size % numThreads ? 0 : 1)), 1);
+	dim3 dimGridFan2((Size / numThreads) + (!(Size % numThreads ? 0 : 1)), Size - 1);
+
+	// int blockSize2d, gridSize2d;
+	// blockSize2d = BLOCK_SIZE_XY;
+	// gridSize2d = (Size/blockSize2d) + (!(Size%blockSize2d?0:1)); 
+	
+	// dim3 dimBlockXY(blockSize2d,blockSize2d);
+	// dim3 dimGridXY(gridSize2d,gridSize2d);
 
 
 	// begin timing kernels
@@ -392,41 +386,12 @@ void ForwardSub()
 	gettimeofday(&time_start, NULL);
 	for (t = 0; t < (Size - 1); t++)
 	{
-		// printf("Before:\n");
-		// cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// printf("L(m):\n");
-		// PrintMat(m, Size, Size);
-		// printf("U(a):\n");
-		// PrintMat(a, Size, Size);
-		// printf("b:\n");
-		// PrintAry(b, Size);
-		dimGrid.x = (((Size-t) / block_size) + (!((Size-t) % block_size) ? 0 : 1));
-		Fan1<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda ,Size, t);
-		//cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// PrintMat(m, Size, Size);
-		// if(t == 1) {
-		// 	exit(1);
-		// }
+		//dimGrid.x = (((Size-t) / block_size) + (!((Size-t) % block_size) ? 0 : 1));
+		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda ,Size, t);
 
-		// cudaDeviceSynchronize();
-
-		// Fan2<<<dimGridXY, dimBlockXY>>>(m_cuda, a_cuda, b_cuda, Size, Size - t, t);
-		dimGridFan2.y = (Size - 1 - t);
-		Fan2New<<<dimGridXY, dimBlockXY>>>(m_cuda, a_cuda, b_cuda, Size, t);
-		// printf("After:\n");
-		// cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
-		// printf("L(m):\n");
-		// PrintMat(m, Size, Size);
-		// printf("U(a):\n");
-		// PrintMat(a, Size, Size);
-		// printf("b:\n");
-		// PrintAry(b, Size);
-
-		// cudaDeviceSynchronize();
+		// dimGridFan2.y = (Size - 1 - t);
+		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+		//Fan2New<<<dimGridXY, dimBlockXY>>>(m_cuda, a_cuda, Size, t);
 		checkCUDAError("Fan2");
 	}
 	// end timing kernels
