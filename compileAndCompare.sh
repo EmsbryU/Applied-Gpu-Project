@@ -12,8 +12,8 @@ else
 fi
 
 # Validate input argument
-if [ "$MATRIX_SIZE" != "16" ] && [ "$MATRIX_SIZE" != "4096" ] && [ "$MATRIX_SIZE" != "1024" ]; then
-    echo "Invalid matrix size. Only 16, 1024, 4096 are supported."
+if [ "$MATRIX_SIZE" != "4" ] &&"$MATRIX_SIZE" != "16" ] && [ "$MATRIX_SIZE" != "4096" ] && [ "$MATRIX_SIZE" != "1024" ]; then
+    echo "Invalid matrix size. Only 4, 16, 1024, 4096 are supported."
     exit 1
 fi
 
