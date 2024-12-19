@@ -386,10 +386,10 @@ void ForwardSub()
 	gettimeofday(&time_start, NULL);
 	for (t = 0; t < (Size - 1); t++)
 	{
-		//dimGrid.x = (((Size-t) / block_size) + (!((Size-t) % block_size) ? 0 : 1));
+		dimGrid.x = (((Size-t) / block_size) + (!((Size-t) % block_size) ? 0 : 1));
 		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda ,Size, t);
 
-		// dimGridFan2.y = (Size - 1 - t);
+		dimGridFan2.y = (Size - 1 - t);
 		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
 		//Fan2New<<<dimGridXY, dimBlockXY>>>(m_cuda, a_cuda, Size, t);
 		checkCUDAError("Fan2");
