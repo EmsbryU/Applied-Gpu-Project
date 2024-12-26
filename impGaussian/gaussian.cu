@@ -304,10 +304,12 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
 	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
 	if (gthid >= Size - 1 - t)
 		return;
-	
-	m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];;
+	// m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	// b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
 
-	b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
+	float tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	b_cuda[gthid + 1 + t] -= tmp * b_cuda[t];
+	m_cuda[Size * (gthid + t + 1) + t] = tmp;
 }
 
 /*-------------------------------------------------------
@@ -322,13 +324,9 @@ __global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda,int Size, int j
 	
 	int xidx = blockIdx.x * blockDim.x + threadIdx.x;
 	int yidx = blockIdx.y * blockDim.y + threadIdx.y;
-	//printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
 	
 	a_cuda[Size*(xidx+1+t)+(yidx+t)] -= m_cuda[Size*(xidx+1+t)+t] * a_cuda[Size*t+(yidx+t)];
-	//a_cuda[xidx+1+t][yidx+t] -= m_cuda[xidx+1+t][t] * a_cuda[t][yidx+t];
 	if(yidx == 0){
-		//printf("blockIdx.x:%d,threadIdx.x:%d,blockIdx.y:%d,threadIdx.y:%d,blockDim.x:%d,blockDim.y:%d\n",blockIdx.x,threadIdx.x,blockIdx.y,threadIdx.y,blockDim.x,blockDim.y);
-		//printf("xidx:%d,yidx:%d\n",xidx,yidx);
 		b_cuda[xidx+1+t] -= m_cuda[Size*(xidx+1+t)+(yidx+t)] * b_cuda[t];
 	}
 }
@@ -337,7 +335,7 @@ __global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t) {
 	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size) return;
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
-	//printf("row: %d, y: %d\n", row, threadIdx.y);
+
 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
 }
 
