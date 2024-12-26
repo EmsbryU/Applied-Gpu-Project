@@ -328,8 +328,8 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
 
 __global__ void Fan1NewNew(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
 {
-	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
-	if (gthid >= Size - 1 - t)
+	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x + 1 + t;
+	if (gthid >= Size)
 		return;
 
 	// Baseline solution
@@ -337,9 +337,9 @@ __global__ void Fan1NewNew(float *m_cuda, float *a_cuda, float *b_cuda, int Size
 	//  b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
 
 	// Temp variable - fastest atm
-	float tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
-	b_cuda[gthid + 1 + t] -= tmp * b_cuda[t];
-	m_cuda[(gthid + t + 1)] = tmp;
+	float tmp = a_cuda[Size * gthid + t] / a_cuda[Size * t + t];
+	b_cuda[gthid] -= tmp * b_cuda[t];
+	m_cuda[gthid] = tmp;
 
 	// Shared memory - slower than just temp by around 0.1ms
 	//  __shared__ float c[2];

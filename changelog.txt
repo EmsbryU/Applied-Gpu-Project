@@ -1,2 +1,7 @@
 Modifications done:
 Removed deprecated and unnecessary cudaThreadSynchronise()
+New fan functions (changed where b is calculated to Fan1 -  less branching)
+New dynamic grid dimensions
+New timing library
+Combined the two fan functions into one (seems to be little bit slower)
+Created gaussian2.cu where multiplier matrix is smaller (less mem to copy)
