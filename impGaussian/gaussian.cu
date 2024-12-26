@@ -191,8 +191,8 @@ int main(int argc, char *argv[])
 		printf("The final solution is: \n");
 		PrintAry(finalVec, Size);
 	}
-	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec)/1000000000.0);
-	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec)/1000000000.0);
+	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
+	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec) / 1000000000.0);
 
 	free(m);
 	free(a);
@@ -349,7 +349,7 @@ __global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int 
 
 __global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t)
 {
-	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t>= Size)
+	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
 		return;
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
@@ -360,22 +360,22 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
 {
 
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
-	//unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+	// unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
 	unsigned int row = blockIdx.y + 1 + t;
 
 	if (row >= Size || col >= Size)
 		return;
 
 	__shared__ float c;
-	 if(threadIdx.x == 0)
-	 	c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	if (threadIdx.x == 0)
+		c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
 	__syncthreads();
 
 	a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
 
-	if(col == t)
+	if (col == t)
 		b_cuda[row] -= c * b_cuda[t];
-	
+
 	// float tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
 	// a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
 
@@ -426,7 +426,7 @@ void ForwardSub()
 
 	// begin timing kernels
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_start);
-	
+
 	for (t = 0; t < (Size - 1); t++)
 	{
 		dimGrid.x = (((Size - t) / block_size) + (!((Size - t) % block_size) ? 0 : 1));
@@ -435,16 +435,16 @@ void ForwardSub()
 		dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
 		dimGridFan2.y = (Size - 1 - t);
 		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
-		//CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
-		//checkCUDAError("Fan2");
-		// cudaDeviceSynchronize();
-		// exit(1);
+		// CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
+		// checkCUDAError("Fan2");
+		//  cudaDeviceSynchronize();
+		//  exit(1);
 	}
 	// end timing kernels
 	// int threadsPerBlock = 128;
-    // int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;
-    // size_t shared_memory_size = Size * sizeof(float); // Shared memory for the active row
-    // upper_triangular<<<blocksPerGrid, threadsPerBlock, shared_memory_size>>>(a_cuda, Size);
+	// int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;
+	// size_t shared_memory_size = Size * sizeof(float); // Shared memory for the active row
+	// upper_triangular<<<blocksPerGrid, threadsPerBlock, shared_memory_size>>>(a_cuda, Size);
 
 	cudaDeviceSynchronize();
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_end);

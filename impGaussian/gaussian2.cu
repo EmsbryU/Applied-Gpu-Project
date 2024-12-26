@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
 		PrintAry(finalVec, Size);
 	}
 	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
-	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec)/1000000000.0);
+	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec) / 1000000000.0);
 
 	free(m);
 	free(a);
