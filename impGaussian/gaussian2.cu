@@ -172,12 +172,13 @@ int main(int argc, char *argv[])
 	ForwardSub();
 
 	// end timing
+
 	clock_gettime(CLOCK_MONOTONIC, &time_end);
 
 	if (verbose)
 	{
 		printf("Matrix m is: \n");
-		PrintMat(m, Size, Size);
+		PrintAry(m, Size);
 
 		printf("Matrix a is: \n");
 		PrintMat(a, Size, Size);
@@ -191,7 +192,7 @@ int main(int argc, char *argv[])
 		printf("The final solution is: \n");
 		PrintAry(finalVec, Size);
 	}
-	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec)/1000000000.0);
+	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
 	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec)/1000000000.0);
 
 	free(m);
@@ -267,7 +268,7 @@ void InitProblemOnce(char *filename)
 	// printf("The input array b is:\n");
 	// PrintAry(b, Size);
 
-	m = (float *)malloc(Size * Size * sizeof(float));
+	m = (float *)malloc(Size * sizeof(float));
 }
 
 /*------------------------------------------------------
@@ -278,7 +279,7 @@ void InitProblemOnce(char *filename)
 void InitPerRun()
 {
 	int i;
-	for (i = 0; i < Size * Size; i++)
+	for (i = 0; i < Size; i++)
 		*(m + i) = 0.0;
 }
 
@@ -325,6 +326,32 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
 	//  m_cuda[Size * (gthid + t + 1) + t] = tmp;
 }
 
+__global__ void Fan1NewNew(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
+{
+	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
+	if (gthid >= Size - 1 - t)
+		return;
+
+	// Baseline solution
+	//  m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	//  b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
+
+	// Temp variable - fastest atm
+	float tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	b_cuda[gthid + 1 + t] -= tmp * b_cuda[t];
+	m_cuda[(gthid + t + 1)] = tmp;
+
+	// Shared memory - slower than just temp by around 0.1ms
+	//  __shared__ float c[2];
+	//  if(threadIdx.x == 0)
+	//  	c[0] = a_cuda[Size * t + t];
+	//  	c[1] = b_cuda[t];
+	//  __syncthreads();
+	//  float tmp = a_cuda[Size * (gthid + t + 1) + t] / c[0];
+	//  b_cuda[gthid + 1 + t] -= tmp * c[1];
+	//  m_cuda[Size * (gthid + t + 1) + t] = tmp;
+}
+
 /*-------------------------------------------------------
  ** Fan2() -- Modify the matrix A into LUD
  **-------------------------------------------------------
@@ -349,33 +376,43 @@ __global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int 
 
 __global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t)
 {
-	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t>= Size)
+	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
 		return;
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
 
 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
 }
+
+__global__ void Fan2NewNew(float *m_cuda, float *a_cuda, int Size, int t)
+{
+	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
+		return;
+	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
+	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+
+	a_cuda[Size * row + col] -= m_cuda[row] * a_cuda[Size * t + col];
+}
 __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
 {
 
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
-	//unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+	// unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
 	unsigned int row = blockIdx.y + 1 + t;
 
 	if (row >= Size || col >= Size)
 		return;
 
 	__shared__ float c;
-	 if(threadIdx.x == 0)
-	 	c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	if (threadIdx.x == 0)
+		c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
 	__syncthreads();
 
 	a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
 
-	if(col == t)
+	if (col == t)
 		b_cuda[row] -= c * b_cuda[t];
-	
+
 	// float tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
 	// a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
 
@@ -390,18 +427,20 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
  */
 void ForwardSub()
 {
-	int t = 0;
+	int t;
 	float *m_cuda, *a_cuda, *b_cuda;
 
 	// allocate memory on GPU
-	cudaMalloc((void **)&m_cuda, Size * Size * sizeof(float));
+	cudaMalloc((void **)&m_cuda, Size * sizeof(float));
+	// cudaMalloc((void **)&m_cuda, Size * Size * sizeof(float));
 
 	cudaMalloc((void **)&a_cuda, Size * Size * sizeof(float));
 
 	cudaMalloc((void **)&b_cuda, Size * sizeof(float));
 
 	// copy memory to GPU
-	cudaMemcpy(m_cuda, m, Size * Size * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_cuda, m, Size * sizeof(float), cudaMemcpyHostToDevice);
+	// cudaMemcpy(m_cuda, m, Size * Size * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(a_cuda, a, Size * Size * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(b_cuda, b, Size * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -426,31 +465,34 @@ void ForwardSub()
 
 	// begin timing kernels
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_start);
-	
+
 	for (t = 0; t < (Size - 1); t++)
 	{
 		dimGrid.x = (((Size - t) / block_size) + (!((Size - t) % block_size) ? 0 : 1));
-		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+		// Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+		Fan1NewNew<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
 
 		dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
 		dimGridFan2.y = (Size - 1 - t);
-		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
-		//CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
-		//checkCUDAError("Fan2");
-		// cudaDeviceSynchronize();
-		// exit(1);
+		// Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+		Fan2NewNew<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+		// CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
+		// checkCUDAError("Fan2");
+		//  cudaDeviceSynchronize();
+		//  exit(1);
 	}
 	// end timing kernels
 	// int threadsPerBlock = 128;
-    // int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;
-    // size_t shared_memory_size = Size * sizeof(float); // Shared memory for the active row
-    // upper_triangular<<<blocksPerGrid, threadsPerBlock, shared_memory_size>>>(a_cuda, Size);
+	// int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;
+	// size_t shared_memory_size = Size * sizeof(float); // Shared memory for the active row
+	// upper_triangular<<<blocksPerGrid, threadsPerBlock, shared_memory_size>>>(a_cuda, Size);
 
 	cudaDeviceSynchronize();
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_end);
 
 	// copy memory back to CPU
-	cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(m, m_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
+	// cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaFree(m_cuda);
