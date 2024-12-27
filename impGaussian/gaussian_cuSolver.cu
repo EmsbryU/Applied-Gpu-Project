@@ -82,6 +82,7 @@ void solveGaussianElimination(int n, const std::vector<double> &A, const std::ve
     // Convert matrix to column-major order
     std::vector<double> A_colMajor;
     convertToColumnMajor(A, A_colMajor, n);
+    double before = cpuSecond();
 
     CHECK_CUDA(cudaMalloc((void **)&d_A, n * n * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void **)&d_b, n * sizeof(double)));
@@ -134,6 +135,7 @@ void solveGaussianElimination(int n, const std::vector<double> &A, const std::ve
     cudaFree(d_workspace);
     cusolverDnDestroy(cusolverH);
     cudaStreamDestroy(stream);
+    std::cout << "Time taken: " << cpuSecond() - before << " seconds" << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -146,10 +148,10 @@ int main(int argc, char *argv[]) {
     std::vector<double> A, b, x, r;
     readMatrix(argv[1], n, A, b, r);
 
-    double before = cpuSecond();
+    
 
     solveGaussianElimination(n, A, b, x);
-    std::cout << "Time taken: " << cpuSecond() - before << " seconds" << std::endl;
+    
     double largestError = -1;
     for (int i = 0; i < n; ++i) {
         double error = std::abs(x[i] - r[i]);
