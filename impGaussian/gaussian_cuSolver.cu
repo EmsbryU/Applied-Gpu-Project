@@ -30,7 +30,7 @@ double cpuSecond() {
         } \
     }
 
-void convertToColumnMajor(const std::vector<double> &rowMajor, std::vector<double> &colMajor, int n) {
+void convertToColumnMajor(const std::vector<float> &rowMajor, std::vector<float> &colMajor, int n) {
     colMajor.resize(n * n);
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
@@ -39,7 +39,7 @@ void convertToColumnMajor(const std::vector<double> &rowMajor, std::vector<doubl
     }
 }
 
-void readMatrix(const std::string &filename, int &n, std::vector<double> &A, std::vector<double> &b, std::vector<double> &r) {
+void readMatrix(const std::string &filename, int &n, std::vector<float> &A, std::vector<float> &b, std::vector<float> &r) {
     std::ifstream infile(filename);
     if (!infile.is_open()) {
         std::cerr << "Failed to open file: " << filename << std::endl;
@@ -72,38 +72,38 @@ void readMatrix(const std::string &filename, int &n, std::vector<double> &A, std
     infile.close();
 }
 
-void solveGaussianElimination(int n, const std::vector<double> &A, const std::vector<double> &b, std::vector<double> &x) {
-    double *d_A, *d_b;
+void solveGaussianElimination(int n, const std::vector<float> &A, const std::vector<float> &b, std::vector<float> &x) {
+    float *d_A, *d_b;
     int *d_info;
     int *d_ipiv;
     cusolverDnHandle_t cusolverH;
     cudaStream_t stream;
 
     // Convert matrix to column-major order
-    std::vector<double> A_colMajor;
+    std::vector<float> A_colMajor;
     convertToColumnMajor(A, A_colMajor, n);
-    double before = cpuSecond();
-
-    CHECK_CUDA(cudaMalloc((void **)&d_A, n * n * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void **)&d_b, n * sizeof(double)));
+    
+    
+    CHECK_CUDA(cudaMalloc((void **)&d_A, n * n * sizeof(float)));
+    CHECK_CUDA(cudaMalloc((void **)&d_b, n * sizeof(float)));
     CHECK_CUDA(cudaMalloc((void **)&d_info, sizeof(int)));
     CHECK_CUDA(cudaMalloc((void **)&d_ipiv, n * sizeof(int)));
 
-    CHECK_CUDA(cudaMemcpy(d_A, A_colMajor.data(), n * n * sizeof(double), cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(d_b, b.data(), n * sizeof(double), cudaMemcpyHostToDevice));
-
+    CHECK_CUDA(cudaMemcpy(d_A, A_colMajor.data(), n * n * sizeof(float), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_b, b.data(), n * sizeof(float), cudaMemcpyHostToDevice));
+    double before = cpuSecond();
     CHECK_CUSOLVER(cusolverDnCreate(&cusolverH));
     CHECK_CUDA(cudaStreamCreate(&stream));
     CHECK_CUSOLVER(cusolverDnSetStream(cusolverH, stream));
 
     int workspace_size;
-    double *d_workspace;
+    float *d_workspace;
 
-    CHECK_CUSOLVER(cusolverDnDgetrf_bufferSize(cusolverH, n, n, d_A, n, &workspace_size));
-    CHECK_CUDA(cudaMalloc((void **)&d_workspace, workspace_size * sizeof(double)));
+    CHECK_CUSOLVER(cusolverDnSgetrf_bufferSize(cusolverH, n, n, d_A, n, &workspace_size));
+    CHECK_CUDA(cudaMalloc((void **)&d_workspace, workspace_size * sizeof(float)));
 
     // LU Factorization
-    CHECK_CUSOLVER(cusolverDnDgetrf(cusolverH, n, n, d_A, n, d_workspace, d_ipiv, d_info));
+    CHECK_CUSOLVER(cusolverDnSgetrf(cusolverH, n, n, d_A, n, d_workspace, d_ipiv, d_info));
 
     // Check if the matrix is singular
     int info_host;
@@ -121,12 +121,11 @@ void solveGaussianElimination(int n, const std::vector<double> &A, const std::ve
     }
 
     // Solve the linear system
-    CHECK_CUSOLVER(cusolverDnDgetrs(cusolverH, CUBLAS_OP_N, n, 1, d_A, n, d_ipiv, d_b, n, d_info));
-
+    CHECK_CUSOLVER(cusolverDnSgetrs(cusolverH, CUBLAS_OP_N, n, 1, d_A, n, d_ipiv, d_b, n, d_info));
+    
     // Copy the result back to the host
     x.resize(n);
-    CHECK_CUDA(cudaMemcpy(x.data(), d_b, n * sizeof(double), cudaMemcpyDeviceToHost));
-
+    CHECK_CUDA(cudaMemcpy(x.data(), d_b, n * sizeof(float), cudaMemcpyDeviceToHost));
     // Cleanup
     cudaFree(d_A);
     cudaFree(d_b);
@@ -135,6 +134,7 @@ void solveGaussianElimination(int n, const std::vector<double> &A, const std::ve
     cudaFree(d_workspace);
     cusolverDnDestroy(cusolverH);
     cudaStreamDestroy(stream);
+    cudaDeviceSynchronize();
     std::cout << "Time taken: " << cpuSecond() - before << " seconds" << std::endl;
 }
 
@@ -145,16 +145,14 @@ int main(int argc, char *argv[]) {
     }
 
     int n;
-    std::vector<double> A, b, x, r;
+    std::vector<float> A, b, x, r;
     readMatrix(argv[1], n, A, b, r);
 
-    
-
     solveGaussianElimination(n, A, b, x);
-    
-    double largestError = -1;
+
+    float largestError = -1;
     for (int i = 0; i < n; ++i) {
-        double error = std::abs(x[i] - r[i]);
+        float error = std::abs(x[i] - r[i]);
         if (error > largestError) {
             largestError = error;
         }
