@@ -403,21 +403,21 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
 	if (row >= Size || col >= Size)
 		return;
 
-	__shared__ float c;
-	if (threadIdx.x == 0)
-		c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
-	__syncthreads();
+	// __shared__ float c;
+	// if (threadIdx.x == 0)
+	// 	c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	// __syncthreads();
 
-	a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
+	// a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
 
-	if (col == t)
-		b_cuda[row] -= c * b_cuda[t];
+	// if (col == t)
+	// 	b_cuda[row] -= c * b_cuda[t];
 
-	// float tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
-	// a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
+	float tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
 
-	// if(col == t)
-	// 	b_cuda[row] -= tmp * b_cuda[t];
+	if(col == t)
+		b_cuda[row] -= tmp * b_cuda[t];
 }
 
 /*------------------------------------------------------
