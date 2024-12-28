@@ -61,13 +61,9 @@ void PrintMat(float *ary, int nrow, int ncolumn);
 void PrintAry(float *ary, int ary_size);
 void PrintDeviceProperties();
 void checkCUDAError(const char *msg);
-void SolveUpperTriangular(float *a, float *b, int Size);
 
 struct timespec time_start;
 struct timespec time_end;
-
-struct timespec time_start_backsub;
-struct timespec time_end_backsub;
 
 struct timespec time_kernel_start;
 struct timespec time_kernel_end;
@@ -131,10 +127,6 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	// PrintDeviceProperties();
-	// char filename[100];
-	// sprintf(filename,"matrices/matrix%d.txt",size);
-
 	for (i = 1; i < argc; i++)
 	{
 		if (argv[i][0] == '-')
@@ -191,10 +183,7 @@ int main(int argc, char *argv[])
 		printf("Array b is: \n");
 		PrintAry(b, Size);
 	}
-	// clock_gettime(CLOCK_MONOTONIC, &time_start_backsub);
-	// // //BackSub();
-	// // //SolveUpperTriangular(a, b, finalVec, Size);
-	// clock_gettime(CLOCK_MONOTONIC, &time_end_backsub);
+	BackSub();
 	if (verbose)
 	{
 		printf("The final solution is: \n");
@@ -202,7 +191,6 @@ int main(int argc, char *argv[])
 	}
 	printf("\nTime total (including memory transfers)\t%f sec\n", double(time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
 	printf("Time for CUDA kernels:\t%f sec\n", double(time_kernel_end.tv_sec - time_kernel_start.tv_sec) + (time_kernel_end.tv_nsec - time_kernel_start.tv_nsec) / 1000000000.0);
-	printf("\nTime backsub\t%f sec\n", double(time_end_backsub.tv_sec - time_start_backsub.tv_sec) + (time_end_backsub.tv_nsec - time_start_backsub.tv_nsec) / 1000000000.0);
 
 	free(m);
 	free(a);
@@ -377,10 +365,10 @@ void ForwardSub()
 	cudaDeviceSynchronize();
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_end);
 
-	cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
+	
 	// copy memory back to CPU
 	cudaMemcpy(m, m_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
-	// cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
 	
 	cudaFree(m_cuda);
