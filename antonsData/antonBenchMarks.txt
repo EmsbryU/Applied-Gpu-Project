@@ -1,0 +1,83 @@
+Baseline program no modifications:
+
+Size: 4096
+Average Total Time (including memory transfers): 5.149420 sec
+Average Time for CUDA Kernels: 5.003540 sec
+
+Single precision Flop performed: 22956810240 * 2 (since smsp__sass_thread_inst_executed_op_ffma_pred_on so its two in one)
+Total number of global memory loads: 15 564 418 914
+Cache misses:                        13 342 154 319
+Total number of global memory store: 7 884 587 008
+Total number of global memory store miss: 953 456 381
+
+
+==6762== Profiling application: cuda/gaussian/gaussian -f data/gaussian/matrix4096.txt -q
+==6762== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   98.58%  4.82831s      4095  1.1791ms  939.34us  3.4990ms  Fan2(float*, float*, float*, int, int, int)
+                    0.57%  27.991ms         3  9.3303ms  2.4960us  14.323ms  [CUDA memcpy DtoH]
+                    0.57%  27.859ms         3  9.2865ms  3.1040us  14.038ms  [CUDA memcpy HtoD]
+                    0.28%  13.861ms      4095  3.3840us  1.1840us  7.0720us  Fan1(float*, float*, int, int)
+      API calls:   96.13%  4.87158s      8190  594.82us  1.9110us  3.5276ms  cudaThreadSynchronize
+                    1.74%  88.113ms         3  29.371ms  89.733us  87.869ms  cudaMalloc
+                    1.13%  57.113ms         6  9.5188ms  22.311us  14.694ms  cudaMemcpy
+                    0.94%  47.451ms      8190  5.7930us  3.2180us  578.22us  cudaLaunchKernel
+                    0.05%  2.3700ms         3  790.01us  228.93us  1.1186ms  cudaFree
+                    0.02%  998.25us      4095     243ns     133ns  4.8070us  cudaGetLastError
+                    0.00%  127.39us       114  1.1170us     146ns  49.167us  cuDeviceGetAttribute
+                    0.00%  11.921us         1  11.921us  11.921us  11.921us  cuDeviceGetName
+                    0.00%  5.3770us         1  5.3770us  5.3770us  5.3770us  cuDeviceGetPCIBusId
+                    0.00%  4.2520us         1  4.2520us  4.2520us  4.2520us  cuDeviceTotalMem
+                    0.00%  1.4940us         3     498ns     208ns  1.0430us  cuDeviceGetCount
+                    0.00%  1.0400us         2     520ns     167ns     873ns  cuDeviceGet
+                    0.00%     757ns         1     757ns     757ns     757ns  cuModuleGetLoadingMode
+                    0.00%     216ns         1     216ns     216ns     216ns  cuDeviceGetUuid
+
+Size: 1024
+Average Total Time (including memory transfers): 0.188793 sec
+Average Time for CUDA Kernels: 0.100746 sec
+Size: 16
+Average Total Time (including memory transfers): 0.083551 sec
+Average Time for CUDA Kernels: 0.000497 sec
+
+All the shit gaussianFinal:
+Size 16:
+Average Total Time (including memory transfers): 0.084306 sec
+Average Time for CUDA Kernels: 0.000328 sec
+
+Size 1024:
+Average Total Time (including memory transfers): 0.105578 sec
+Average Time for CUDA Kernels: 0.018228 sec
+
+Size 4096:
+Average Total Time (including memory transfers): 0.927908 sec
+Average Time for CUDA Kernels: 0.806540 sec
+
+Single precision Flop performed: 22956810240 * 2 (since smsp__sass_thread_inst_executed_op_ffma_pred_on so its two in one)
+Total number of global memory reads: 7 371 463 837
+Total number of cache miss:          2 969 030 551
+
+Total number of global memory store: 3 491 975 424
+Total number of global memory store miss: 9 530 474
+
+==80484== NVPROF is profiling process 80484, command: impGaussian/gaussian -f data/gaussian/matrix4096.txt -q
+==80484== Profiling application: impGaussian/gaussian -f data/gaussian/matrix4096.txt -q
+==80484== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   94.84%  800.64ms      4095  195.52us  1.3120us  702.24us  Fan2NewNew(float*, float*, int, int)
+                    1.78%  15.043ms         3  5.0145ms  2.3680us  15.038ms  [CUDA memcpy DtoH]
+                    1.73%  14.563ms      4095  3.5560us  1.4720us  7.4240us  Fan1NewNew(float*, float*, float*, int, int)
+                    1.66%  13.992ms         3  4.6639ms  3.0400us  13.985ms  [CUDA memcpy HtoD]
+      API calls:   86.32%  816.39ms      8190  99.680us  2.8500us  1.8868ms  cudaLaunchKernel
+                   10.14%  95.872ms         3  31.957ms  3.8280us  95.728ms  cudaMalloc
+                    3.15%  29.777ms         6  4.9628ms  19.272us  15.432ms  cudaMemcpy
+                    0.22%  2.0652ms         1  2.0652ms  2.0652ms  2.0652ms  cudaDeviceSynchronize
+                    0.16%  1.4706ms         3  490.22us  25.870us  1.1102ms  cudaFree
+                    0.01%  131.82us       114  1.1560us     140ns  51.343us  cuDeviceGetAttribute
+                    0.00%  13.388us         1  13.388us  13.388us  13.388us  cuDeviceGetName
+                    0.00%  5.3750us         1  5.3750us  5.3750us  5.3750us  cuDeviceGetPCIBusId
+                    0.00%  4.4590us         1  4.4590us  4.4590us  4.4590us  cuDeviceTotalMem
+                    0.00%  2.9050us         2  1.4520us     287ns  2.6180us  cuDeviceGet
+                    0.00%  1.5590us         3     519ns     224ns     967ns  cuDeviceGetCount
+                    0.00%     436ns         1     436ns     436ns     436ns  cuModuleGetLoadingMode
+                    0.00%     230ns         1     230ns     230ns     230ns  cuDeviceGetUuid
