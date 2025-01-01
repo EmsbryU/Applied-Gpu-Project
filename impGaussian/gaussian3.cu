@@ -185,10 +185,7 @@ int main(int argc, char *argv[])
 		printf("Array b is: \n");
 		PrintAry(b, Size);
 	}
-
-	//TIMER
 	BackSub();
-	//TIMER
 	if (verbose)
 	{
 		printf("The final solution is: \n");
@@ -386,6 +383,36 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
 	// 	b_cuda[row] -= tmp * b_cuda[t];
 }
 
+__global__ void Multiplier(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
+{
+	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
+	if (gthid >= Size - 1 - t)
+		return;
+	
+	float tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	b_cuda[gthid + 1 + t] -= tmp * b_cuda[t];
+	for(int i = 0; i <= gthid + 1 + t;i++) {
+		a_cuda[Size * (gthid + t + 1) + t + i] -= tmp * a_cuda[Size * t + t + i];
+	}
+	m_cuda[Size * (gthid + t + 1) + t] = tmp;
+}
+// __global__ void Half(float *m_cuda, float *a_cuda, int Size, int t)
+// {
+// 	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
+// 		return;
+// 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
+// 	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+
+// 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
+// }
+__global__ void Finish(float *m_cuda, float *a_cuda, int Size) {
+	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x;
+
+	for(int i = 0; i < col; i++) {
+		a_cuda[Size * (i+1) + col] -= a_cuda[Size * i + col] * m_cuda[Size * (i+1) + i];
+	}
+}
+
 /*------------------------------------------------------
  ** ForwardSub() -- Forward substitution of Gaussian
  ** elimination.
@@ -430,19 +457,29 @@ void ForwardSub()
 	// begin timing kernels
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_start);
 
-	for (t = 0; t < (Size - 1); t++)
-	{
-		dimGrid.x = (((Size - t) / block_size) + (!((Size - t) % block_size) ? 0 : 1));
-		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+	// for (t = 0; t < (Size - 1); t++)
+	// {
+	// 	dimGrid.x = (((Size - t) / block_size) + (!((Size - t) % block_size) ? 0 : 1));
+	// 	// Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+	// 	Multiplier<<<dimGrid,dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
 
-		dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
-		dimGridFan2.y = (Size - 1 - t);
-		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
-		// CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
-		// checkCUDAError("Fan2");
-		//  cudaDeviceSynchronize();
-		//  exit(1);
-	}
+	// 	// dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
+	// 	// dimGridFan2.y = (Size - 1 - t);
+	// 	// Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+	// 	// CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
+	// 	// checkCUDAError("Fan2");
+	// 	//  cudaDeviceSynchronize();
+	// 	//  exit(1);
+	// }
+	Multiplier<<<dimGrid,dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, 0);
+	Multiplier<<<dimGrid,dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, 1);
+	Multiplier<<<dimGrid,dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, 2);
+	cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
+	PrintMat(m, Size, Size);
+	PrintMat(a, Size, Size);
+	exit(1);
+	//Finish<<<16,16>>>(m_cuda, a_cuda, Size);
 	// end timing kernels
 	// int threadsPerBlock = 128;
 	// int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;

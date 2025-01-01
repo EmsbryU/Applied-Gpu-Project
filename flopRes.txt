@@ -1,0 +1,38 @@
+==PROF== Connected to process 36491 (/content/Applied-Gpu-Project/cuda/gaussian/gaussian)
+==PROF== Disconnected from process 36491
+WG size of kernel 1 = 512, WG size of kernel 2= 4 X 4
+Read file from data/gaussian/matrix16.txt 
+
+Time total (including memory transfers)	0.598086 sec
+Time for CUDA kernels:	0.362255 sec
+"ID","Process ID","Process Name","Host Name","Kernel Name","Context","Stream","Block Size","Grid Size","Device","CC","Section Name","Metric Name","Metric Unit","Metric Value"
+"0","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","75"
+"1","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","255"
+"2","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","70"
+"3","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","224"
+"4","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","65"
+"5","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","195"
+"6","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","60"
+"7","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","168"
+"8","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","55"
+"9","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","143"
+"10","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","50"
+"11","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","120"
+"12","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","45"
+"13","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","99"
+"14","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","40"
+"15","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","80"
+"16","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","35"
+"17","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","63"
+"18","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","30"
+"19","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","48"
+"20","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","25"
+"21","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","35"
+"22","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","20"
+"23","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","24"
+"24","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","15"
+"25","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","15"
+"26","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","10"
+"27","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","8"
+"28","36491","gaussian","127.0.0.1","Fan1(float *, float *, int, int)","1","7","(512, 1, 1)","(1, 1, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","5"
+"29","36491","gaussian","127.0.0.1","Fan2(float *, float *, float *, int, int, int)","1","7","(4, 4, 1)","(4, 4, 1)","0","7.5","Command line profiler metrics","smsp__sass_thread_inst_executed_op_ffma_pred_on.sum","inst","3"

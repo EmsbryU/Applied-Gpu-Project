@@ -19,6 +19,7 @@
 #include "cuda.h"
 #include <string.h>
 #include <math.h>
+#include <cuda_fp16.h>
 
 #ifdef RD_WG_SIZE_0_0
 #define MAXBLOCKSIZE RD_WG_SIZE_0_0
@@ -43,8 +44,8 @@
 #endif
 
 int Size;
-float *a, *b, *finalVec;
-float *m;
+__half *a, *b, *finalVec;
+__half *m;
 
 FILE *fp;
 
@@ -52,12 +53,12 @@ void InitProblemOnce(char *filename);
 void InitPerRun();
 void ForwardSub();
 void BackSub();
-__global__ void Fan1(float *m, float *a, int Size, int t);
-__global__ void Fan2(float *m, float *a, float *b, int Size, int j1, int t);
-void InitMat(float *ary, int nrow, int ncol);
-void InitAry(float *ary, int ary_size);
-void PrintMat(float *ary, int nrow, int ncolumn);
-void PrintAry(float *ary, int ary_size);
+__global__ void Fan1(__half *m, __half *a, int Size, int t);
+__global__ void Fan2(__half *m, __half *a, __half *b, int Size, int j1, int t);
+void InitMat(__half *ary, int nrow, int ncol);
+void InitAry(__half *ary, int ary_size);
+void PrintMat(__half *ary, int nrow, int ncolumn);
+void PrintAry(__half *ary, int ary_size);
 void PrintDeviceProperties();
 void checkCUDAError(const char *msg);
 
@@ -68,30 +69,30 @@ struct timespec time_kernel_start;
 struct timespec time_kernel_end;
 
 // create both matrix and right hand side, Ke Wang 2013/08/12 11:51:06
-void create_matrix(float *m, int size)
-{
-	int i, j;
-	float lamda = -0.01;
-	float coe[2 * size - 1];
-	float coe_i = 0.0;
+// void create_matrix(__half *m, int size)
+// {
+// 	int i, j;
+// 	__half lamda = -0.01;
+// 	__half coe[2 * size - 1];
+// 	__half coe_i = 0.0;
 
-	for (i = 0; i < size; i++)
-	{
-		coe_i = 10 * exp(lamda * i);
-		j = size - 1 + i;
-		coe[j] = coe_i;
-		j = size - 1 - i;
-		coe[j] = coe_i;
-	}
+// 	for (i = 0; i < size; i++)
+// 	{
+// 		coe_i = 10 * exp(lamda * i);
+// 		j = size - 1 + i;
+// 		coe[j] = coe_i;
+// 		j = size - 1 - i;
+// 		coe[j] = coe_i;
+// 	}
 
-	for (i = 0; i < size; i++)
-	{
-		for (j = 0; j < size; j++)
-		{
-			m[i * size + j] = coe[size - 1 - i + j];
-		}
-	}
-}
+// 	for (i = 0; i < size; i++)
+// 	{
+// 		for (j = 0; j < size; j++)
+// 		{
+// 			m[i * size + j] = coe[size - 1 - i + j];
+// 		}
+// 	}
+// }
 
 int main(int argc, char *argv[])
 {
@@ -142,14 +143,14 @@ int main(int argc, char *argv[])
 				Size = atoi(argv[i]);
 				printf("Create matrix internally in parse, size = %d \n", Size);
 
-				a = (float *)malloc(Size * Size * sizeof(float));
-				create_matrix(a, Size);
+				a = (__half *)malloc(Size * Size * sizeof(__half));
+				//create_matrix(a, Size);
 
-				b = (float *)malloc(Size * sizeof(float));
+				b = (__half *)malloc(Size * sizeof(__half));
 				for (j = 0; j < Size; j++)
 					b[j] = 1.0;
 
-				m = (float *)malloc(Size * Size * sizeof(float));
+				m = (__half *)malloc(Size * Size * sizeof(__half));
 				break;
 			case 'f': // platform
 				i++;
@@ -172,12 +173,13 @@ int main(int argc, char *argv[])
 	ForwardSub();
 
 	// end timing
+
 	clock_gettime(CLOCK_MONOTONIC, &time_end);
 
 	if (verbose)
 	{
 		printf("Matrix m is: \n");
-		PrintMat(m, Size, Size);
+		PrintAry(m, Size);
 
 		printf("Matrix a is: \n");
 		PrintMat(a, Size, Size);
@@ -185,10 +187,7 @@ int main(int argc, char *argv[])
 		printf("Array b is: \n");
 		PrintAry(b, Size);
 	}
-
-	//TIMER
 	BackSub();
-	//TIMER
 	if (verbose)
 	{
 		printf("The final solution is: \n");
@@ -259,18 +258,18 @@ void InitProblemOnce(char *filename)
 
 	fscanf(fp, "%d", &Size);
 
-	a = (float *)malloc(Size * Size * sizeof(float));
+	a = (__half *)malloc(Size * Size * sizeof(__half));
 
 	InitMat(a, Size, Size);
 	// printf("The input matrix a is:\n");
 	// PrintMat(a, Size, Size);
-	b = (float *)malloc(Size * sizeof(float));
+	b = (__half *)malloc(Size * sizeof(__half));
 
 	InitAry(b, Size);
 	// printf("The input array b is:\n");
 	// PrintAry(b, Size);
 
-	m = (float *)malloc(Size * Size * sizeof(float));
+	m = (__half *)malloc(Size * sizeof(__half));
 }
 
 /*------------------------------------------------------
@@ -281,7 +280,7 @@ void InitProblemOnce(char *filename)
 void InitPerRun()
 {
 	int i;
-	for (i = 0; i < Size * Size; i++)
+	for (i = 0; i < Size; i++)
 		*(m + i) = 0.0;
 }
 
@@ -293,7 +292,7 @@ void InitPerRun()
  ** of t which is defined on the ForwardSub().
  **-------------------------------------------------------
  */
-__global__ void Fan1(float *m_cuda, float *a_cuda, int Size, int t)
+__global__ void Fan1(__half *m_cuda, __half *a_cuda, int Size, int t)
 {
 	// if(threadIdx.x + blockIdx.x * blockDim.x >= Size-1-t) printf(".");
 	// printf("blockIDx.x:%d,threadIdx.x:%d,Size:%d,t:%d,Size-1-t:%d\n",blockIdx.x,threadIdx.x,Size,t,Size-1-t);
@@ -302,7 +301,7 @@ __global__ void Fan1(float *m_cuda, float *a_cuda, int Size, int t)
 		return;
 	*(m_cuda + Size * (blockDim.x * blockIdx.x + threadIdx.x + t + 1) + t) = *(a_cuda + Size * (blockDim.x * blockIdx.x + threadIdx.x + t + 1) + t) / *(a_cuda + Size * t + t);
 }
-__global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int t)
+__global__ void Fan1New(__half *m_cuda, __half *a_cuda, __half *b_cuda, int Size, int t)
 {
 	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x;
 	if (gthid >= Size - 1 - t)
@@ -313,17 +312,43 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
 	//  b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
 
 	// Temp variable - fastest atm
-	float tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	__half tmp = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
 	b_cuda[gthid + 1 + t] -= tmp * b_cuda[t];
 	m_cuda[Size * (gthid + t + 1) + t] = tmp;
 
 	// Shared memory - slower than just temp by around 0.1ms
-	//  __shared__ float c[2];
+	//  __shared__ __half c[2];
 	//  if(threadIdx.x == 0)
 	//  	c[0] = a_cuda[Size * t + t];
 	//  	c[1] = b_cuda[t];
 	//  __syncthreads();
-	//  float tmp = a_cuda[Size * (gthid + t + 1) + t] / c[0];
+	//  __half tmp = a_cuda[Size * (gthid + t + 1) + t] / c[0];
+	//  b_cuda[gthid + 1 + t] -= tmp * c[1];
+	//  m_cuda[Size * (gthid + t + 1) + t] = tmp;
+}
+
+__global__ void Fan1NewNew(__half *m_cuda, __half *a_cuda, __half *b_cuda, int Size, int t)
+{
+	unsigned int gthid = threadIdx.x + blockIdx.x * blockDim.x + 1 + t;
+	if (gthid >= Size)
+		return;
+
+	// Baseline solution
+	//  m_cuda[Size * (gthid + t + 1) + t] = a_cuda[Size * (gthid + t + 1) + t] / a_cuda[Size * t + t];
+	//  b_cuda[gthid + 1 + t] -= m_cuda[Size * (gthid + t + 1) + t] * b_cuda[t];
+
+	// Temp variable - fastest atm
+	__half tmp = a_cuda[Size * gthid + t] / a_cuda[Size * t + t];
+	b_cuda[gthid] -= tmp * b_cuda[t];
+	m_cuda[gthid] = tmp;
+
+	// Shared memory - slower than just temp by around 0.1ms
+	//  __shared__ __half c[2];
+	//  if(threadIdx.x == 0)
+	//  	c[0] = a_cuda[Size * t + t];
+	//  	c[1] = b_cuda[t];
+	//  __syncthreads();
+	//  __half tmp = a_cuda[Size * (gthid + t + 1) + t] / c[0];
 	//  b_cuda[gthid + 1 + t] -= tmp * c[1];
 	//  m_cuda[Size * (gthid + t + 1) + t] = tmp;
 }
@@ -333,7 +358,7 @@ __global__ void Fan1New(float *m_cuda, float *a_cuda, float *b_cuda, int Size, i
  **-------------------------------------------------------
  */
 
-__global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int j1, int t)
+__global__ void Fan2(__half *m_cuda, __half *a_cuda, __half *b_cuda, int Size, int j1, int t)
 {
 	if (threadIdx.x + blockIdx.x * blockDim.x >= Size - 1 - t)
 		return;
@@ -350,7 +375,7 @@ __global__ void Fan2(float *m_cuda, float *a_cuda, float *b_cuda, int Size, int 
 	}
 }
 
-__global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t)
+__global__ void Fan2New(__half *m_cuda, __half *a_cuda, int Size, int t)
 {
 	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
 		return;
@@ -359,7 +384,17 @@ __global__ void Fan2New(float *m_cuda, float *a_cuda, int Size, int t)
 
 	a_cuda[Size * row + col] -= m_cuda[Size * row + t] * a_cuda[Size * t + col];
 }
-__global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
+
+__global__ void Fan2NewNew(__half *m_cuda, __half *a_cuda, int Size, int t)
+{
+	if (threadIdx.y + blockIdx.y * blockDim.y + 1 + t >= Size || threadIdx.x + blockIdx.x * blockDim.x + t >= Size)
+		return;
+	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
+	unsigned int row = threadIdx.y + blockIdx.y * blockDim.y + 1 + t;
+
+	a_cuda[Size * row + col] -= m_cuda[row] * a_cuda[Size * t + col];
+}
+__global__ void CombinedFan(__half *a_cuda, __half *b_cuda, int Size, int t)
 {
 
 	unsigned int col = threadIdx.x + blockIdx.x * blockDim.x + t;
@@ -369,21 +404,21 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
 	if (row >= Size || col >= Size)
 		return;
 
-	__shared__ float c;
-	if (threadIdx.x == 0)
-		c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
-	__syncthreads();
+	// __shared__ __half c;
+	// if (threadIdx.x == 0)
+	// 	c = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	// __syncthreads();
 
-	a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
+	// a_cuda[Size * row + col] -= c * a_cuda[Size * t + col];
 
-	if (col == t)
-		b_cuda[row] -= c * b_cuda[t];
+	// if (col == t)
+	// 	b_cuda[row] -= c * b_cuda[t];
 
-	// float tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
-	// a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
+	__half tmp = a_cuda[Size * (row) + t] / a_cuda[Size * t + t];
+	a_cuda[Size * row + col] -= tmp * a_cuda[Size * t + col];
 
-	// if(col == t)
-	// 	b_cuda[row] -= tmp * b_cuda[t];
+	if(col == t)
+		b_cuda[row] -= tmp * b_cuda[t];
 }
 
 /*------------------------------------------------------
@@ -393,20 +428,22 @@ __global__ void CombinedFan(float *a_cuda, float *b_cuda, int Size, int t)
  */
 void ForwardSub()
 {
-	int t = 0;
-	float *m_cuda, *a_cuda, *b_cuda;
+	int t;
+	__half *m_cuda, *a_cuda, *b_cuda;
 
 	// allocate memory on GPU
-	cudaMalloc((void **)&m_cuda, Size * Size * sizeof(float));
+	cudaMalloc((void **)&m_cuda, Size * sizeof(__half));
+	// cudaMalloc((void **)&m_cuda, Size * Size * sizeof(__half));
 
-	cudaMalloc((void **)&a_cuda, Size * Size * sizeof(float));
+	cudaMalloc((void **)&a_cuda, Size * Size * sizeof(__half));
 
-	cudaMalloc((void **)&b_cuda, Size * sizeof(float));
+	cudaMalloc((void **)&b_cuda, Size * sizeof(__half));
 
 	// copy memory to GPU
-	cudaMemcpy(m_cuda, m, Size * Size * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(a_cuda, a, Size * Size * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(b_cuda, b, Size * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_cuda, m, Size * sizeof(__half), cudaMemcpyHostToDevice);
+	// cudaMemcpy(m_cuda, m, Size * Size * sizeof(__half), cudaMemcpyHostToDevice);
+	cudaMemcpy(a_cuda, a, Size * Size * sizeof(__half), cudaMemcpyHostToDevice);
+	cudaMemcpy(b_cuda, b, Size * sizeof(__half), cudaMemcpyHostToDevice);
 
 	int block_size, grid_size;
 
@@ -433,11 +470,13 @@ void ForwardSub()
 	for (t = 0; t < (Size - 1); t++)
 	{
 		dimGrid.x = (((Size - t) / block_size) + (!((Size - t) % block_size) ? 0 : 1));
-		Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+		// Fan1New<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
+		Fan1NewNew<<<dimGrid, dimBlock>>>(m_cuda, a_cuda, b_cuda, Size, t);
 
 		dimGridFan2.x = ((Size - t) / numThreads) + (!((Size - t) % numThreads ? 0 : 1));
 		dimGridFan2.y = (Size - 1 - t);
-		Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+		// Fan2New<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
+		Fan2NewNew<<<dimGridFan2, dimBlockFan2>>>(m_cuda, a_cuda, Size, t);
 		// CombinedFan<<<dimGridFan2, dimBlockFan2>>>(a_cuda, b_cuda, Size, t);
 		// checkCUDAError("Fan2");
 		//  cudaDeviceSynchronize();
@@ -446,16 +485,17 @@ void ForwardSub()
 	// end timing kernels
 	// int threadsPerBlock = 128;
 	// int blocksPerGrid = (Size + threadsPerBlock - 1) / threadsPerBlock;
-	// size_t shared_memory_size = Size * sizeof(float); // Shared memory for the active row
+	// size_t shared_memory_size = Size * sizeof(__half); // Shared memory for the active row
 	// upper_triangular<<<blocksPerGrid, threadsPerBlock, shared_memory_size>>>(a_cuda, Size);
 
 	cudaDeviceSynchronize();
 	clock_gettime(CLOCK_MONOTONIC, &time_kernel_end);
 
 	// copy memory back to CPU
-	cudaMemcpy(m, m_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(a, a_cuda, Size * Size * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(b, b_cuda, Size * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(m, m_cuda, Size * sizeof(__half), cudaMemcpyDeviceToHost);
+	// cudaMemcpy(m, m_cuda, Size * Size * sizeof(__half), cudaMemcpyDeviceToHost);
+	cudaMemcpy(a, a_cuda, Size * Size * sizeof(__half), cudaMemcpyDeviceToHost);
+	cudaMemcpy(b, b_cuda, Size * sizeof(__half), cudaMemcpyDeviceToHost);
 	cudaFree(m_cuda);
 	cudaFree(a_cuda);
 	cudaFree(b_cuda);
@@ -469,7 +509,7 @@ void ForwardSub()
 void BackSub()
 {
 	// create a new vector to hold the final answer
-	finalVec = (float *)malloc(Size * sizeof(float));
+	finalVec = (__half *)malloc(Size * sizeof(__half));
 	// solve "bottom up"
 	int i, j;
 	// for(i=0;i<Size;i++){
@@ -494,15 +534,16 @@ void BackSub()
 	// THIS WAS VERY FAST NOT WORTH OPTIMISING
 }
 
-void InitMat(float *ary, int nrow, int ncol)
+void InitMat(__half *ary, int nrow, int ncol)
 {
 	int i, j;
-
+	float tmp;
 	for (i = 0; i < nrow; i++)
 	{
 		for (j = 0; j < ncol; j++)
 		{
-			fscanf(fp, "%f", ary + Size * i + j);
+			fscanf(fp, "%f", &tmp);
+			ary[Size * i + j] = __float2half(static_cast<float>(tmp));
 		}
 	}
 }
@@ -511,15 +552,15 @@ void InitMat(float *ary, int nrow, int ncol)
  ** PrintMat() -- Print the contents of the matrix
  **------------------------------------------------------
  */
-void PrintMat(float *ary, int nrow, int ncol)
+void PrintMat(__half *ary, int nrow, int ncol)
 {
 	int i, j;
-
+	float tmp;
 	for (i = 0; i < nrow; i++)
 	{
 		for (j = 0; j < ncol; j++)
 		{
-			printf("%8.2f ", *(ary + Size * i + j));
+			printf("%8.2f ", __half2float(*(ary + Size * i + j)));
 		}
 		printf("\n");
 	}
@@ -531,13 +572,14 @@ void PrintMat(float *ary, int nrow, int ncol)
  ** data from the data file
  **------------------------------------------------------
  */
-void InitAry(float *ary, int ary_size)
+void InitAry(__half *ary, int ary_size)
 {
 	int i;
-
+	float tmp;
 	for (i = 0; i < ary_size; i++)
 	{
-		fscanf(fp, "%f", &ary[i]);
+		fscanf(fp, "%f", &tmp);
+		ary[i] = __float2half(static_cast<float>(tmp));
 	}
 }
 
@@ -545,12 +587,12 @@ void InitAry(float *ary, int ary_size)
  ** PrintAry() -- Print the contents of the array (vector)
  **------------------------------------------------------
  */
-void PrintAry(float *ary, int ary_size)
+void PrintAry(__half *ary, int ary_size)
 {
 	int i;
 	for (i = 0; i < ary_size; i++)
 	{
-		printf("%.2f ", ary[i]);
+		printf("%.2f ", __half2float(ary[i]));
 	}
 	printf("\n\n");
 }
