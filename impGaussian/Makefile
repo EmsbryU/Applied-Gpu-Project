@@ -4,11 +4,11 @@ CC := $(CUDA_DIR)/bin/nvcc
 
 INCLUDE := $(CUDA_DIR)/include
 
-SRC = gaussian.cu
+SRC = gaussianFinal_Backsub.cu
 EXE = gaussian
 
 release: $(SRC)
-	$(CC) $(KERNEL_DIM) $(SRC) -o $(EXE) -I$(INCLUDE) -L$(CUDA_LIB_DIR) 
+	$(CC) -lcublas -lcusolver $(SRC) -o $(EXE) -I$(INCLUDE) -L$(CUDA_LIB_DIR) 
 
 clean:
 	rm gaussian
