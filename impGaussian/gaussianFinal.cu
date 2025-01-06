@@ -10,6 +10,7 @@
  ** Written by Andreas Kura, 02/15/95
  ** Modified by Chong-wei Xu, 04/20/95
  ** Modified by Chris Gregg for CUDA, 07/20/2009
+ ** Modified by Anton Ulin for DD2360 Project, 06/01/2025
  **-----------------------------------------------------------
  */
 #include <stdio.h>
@@ -53,8 +54,8 @@ void InitProblemOnce(char *filename);
 void InitPerRun();
 void ForwardSub();
 void BackSub();
-__global__ void Fan1(float *m, float *a, int Size, int t);
-__global__ void Fan2(float *m, float *a, float *b, int Size, int j1, int t);
+__global__ void Fan1NewNew(float *m, float *a, int Size, int t);
+__global__ void Fan2NewNew(float *m, float *a, float *b, int Size, int j1, int t);
 void InitMat(float *ary, int nrow, int ncol);
 void InitAry(float *ary, int ary_size);
 void PrintMat(float *ary, int nrow, int ncolumn);
@@ -96,7 +97,7 @@ void create_matrix(float *m, int size)
 
 int main(int argc, char *argv[])
 {
-	printf("WG size of kernel 1 = %d, WG size of kernel 2= %d X %d\n", MAXBLOCKSIZE, BLOCK_SIZE_XY, BLOCK_SIZE_XY);
+	printf("WG size of kernel 1 = %d, WG size of kernel 2= %d\n", MAXBLOCKSIZE, MAXBLOCKSIZE);
 	int verbose = 1;
 	int i, j;
 	char flag;
@@ -345,7 +346,7 @@ void ForwardSub()
 	dim3 dimBlock(block_size);
 	dim3 dimGrid(grid_size);
 
-	int numThreads = 128;
+	int numThreads = MAXBLOCKSIZE;
 	dim3 dimBlockFan2(numThreads);
 	dim3 dimGridFan2((Size / numThreads) + (!(Size % numThreads ? 0 : 1)), Size - 1);
 
